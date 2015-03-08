@@ -9,14 +9,11 @@ import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.Proxy;
 import java.net.URL;
-import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Map;
 
@@ -43,23 +40,21 @@ public final class ForwardHandler implements HttpHandler {
         for(Map.Entry<String, List<String>> entry : requestHeaders.entrySet()) {
             logger.debug("--> " + entry.getKey() + " = " + entry.getValue().toString());
         }
-        final String originalRequest = IOUtils.toString(exchange.getRequestBody());
-        final String convertedRequest = converter.convertBeforeForward(originalRequest);
+        final byte[] response = forward(IOUtils.toByteArray(exchange.getRequestBody()));
 
-        final byte[] convertedResponse = converter.convertBeforeReturn(forward(convertedRequest)).getBytes(Charset.defaultCharset());
-
-        exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, convertedResponse.length);
+        exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, response.length);
 
         final OutputStream responseBody = exchange.getResponseBody();
-        responseBody.write(convertedResponse);
+        responseBody.write(response);
         responseBody.flush();
         exchange.close();
     }
 
-    private String forward(String value) {
+    private byte[] forward(byte[] value) {
         logger.info(requestMethod + " request to " + url);
+        boolean notBinary;
         HttpURLConnection connection = null;
-        StringBuilder response = new StringBuilder();
+        byte[] response = null;
         try {
             connection = (HttpURLConnection) url.openConnection(Proxy.NO_PROXY);
             connection.setDoOutput(true);
@@ -77,20 +72,24 @@ public final class ForwardHandler implements HttpHandler {
                     connection.setRequestProperty(entry.getKey(), hv);
                 }
             }
+
             connection.setRequestMethod(requestMethod);
             connection.setReadTimeout(READ_TIMEOUT);
 
-            if(value != null && !value.isEmpty()) {
+            //TODO find out how this can be done smart ;-)
+            notBinary =  ! url.getFile().matches(".*jar|.*zip|.*png|.*jpg");
+
+            if(notBinary) {
+                value = converter.convertBeforeForward(value);
+            }
+            if(value != null && value.length != 0 ) {
                 IOUtils.write(value, connection.getOutputStream());
             }
 
-            BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-
-            String inputLine;
-            while ((inputLine = in.readLine()) != null) {
-                response.append(inputLine);
+            response = IOUtils.toByteArray(connection.getInputStream());
+            if(notBinary) {
+                response = converter.convertBeforeReturn(response);
             }
-            in.close();
 
         } catch(IOException e) {
             logger.error("Error forwarding request", e);
@@ -99,7 +98,7 @@ public final class ForwardHandler implements HttpHandler {
                 connection.disconnect();
             }
         }
-        return response.toString();
+        return response;
 
     }
 

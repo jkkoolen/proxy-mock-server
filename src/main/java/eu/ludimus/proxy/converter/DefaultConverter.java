@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.Properties;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -35,17 +36,19 @@ public class DefaultConverter implements Converter {
 
 
     @Override
-    public String convertBeforeForward(String value) {
+    public byte[] convertBeforeForward(byte[] bytes) {
+        String value = new String(bytes, Charset.defaultCharset());
         logger.debug(IN + value);
         value = convert(value, "convertBeforeForward.\\d\\d*.match", CONVERTED_IN);
-        return value;
+        return value.getBytes(Charset.defaultCharset());
     }
 
     @Override
-    public String convertBeforeReturn(String value) {
+    public byte[] convertBeforeReturn(byte[] bytes) {
+        String value = new String(bytes, Charset.defaultCharset());
         logger.debug(OUT + value);
         value = convert(value, "convertBeforeReturn.\\d\\d*.match", CONVERTED_OUT);
-        return value;
+        return value.getBytes(Charset.defaultCharset());
     }
 
     private String convert(String value, String keyPattern, String logPrefix) {
