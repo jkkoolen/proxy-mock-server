@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.Proxy;
@@ -37,8 +38,17 @@ public final class ForwardHandler implements HttpHandler {
         url = exchange.getRequestURI().toURL();
         requestMethod = exchange.getRequestMethod();
         requestHeaders = exchange.getRequestHeaders();
+        final Headers responseHeaders = exchange.getResponseHeaders();
         for(Map.Entry<String, List<String>> entry : requestHeaders.entrySet()) {
             logger.debug("--> " + entry.getKey() + " = " + entry.getValue().toString());
+            final String headerValue = entry.getValue().toString();
+            final String hv = headerValue.substring(1, headerValue.length() - 1);
+            if(! hv.isEmpty() ) {
+                if ("content-length".equals(entry.getKey().toLowerCase())) { //ignore
+                    continue;
+                }
+                responseHeaders.set(entry.getKey(), hv);
+            }
         }
         final byte[] response = forward(IOUtils.toByteArray(exchange.getRequestBody()));
 
@@ -52,7 +62,7 @@ public final class ForwardHandler implements HttpHandler {
 
     private byte[] forward(byte[] value) {
         logger.info(requestMethod + " request to " + url);
-        boolean notBinary;
+        boolean mustConvert;
         HttpURLConnection connection = null;
         byte[] response = null;
         try {
@@ -76,18 +86,18 @@ public final class ForwardHandler implements HttpHandler {
             connection.setRequestMethod(requestMethod);
             connection.setReadTimeout(READ_TIMEOUT);
 
-            //TODO find out how this can be done smart ;-)
-            notBinary =  ! url.getFile().matches(".*jar|.*zip|.*png|.*jpg");
+            mustConvert =  "POST".equalsIgnoreCase(requestMethod);
 
-            if(notBinary) {
+            if(mustConvert) {
                 value = converter.convertBeforeForward(value);
             }
             if(value != null && value.length != 0 ) {
                 IOUtils.write(value, connection.getOutputStream());
             }
 
-            response = IOUtils.toByteArray(connection.getInputStream());
-            if(notBinary) {
+            final InputStream inputStream = connection.getInputStream();
+            response = IOUtils.toByteArray(inputStream);
+            if(mustConvert) {
                 response = converter.convertBeforeReturn(response);
             }
 
