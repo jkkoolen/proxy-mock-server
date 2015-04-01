@@ -14,7 +14,6 @@ import java.util.TimerTask;
 public class DefaultConverter implements Converter {
     public static final String MATCH = "match";
     public static final String TO = "to";
-    public static final int NOT_FOUND = -1;
     Logger logger = LoggerFactory.getLogger(getClass());
     public static final String IN = "--> ";
     public static final String OUT = "<-- ";

@@ -40,7 +40,7 @@ public final class ForwardHandler implements HttpHandler {
         requestHeaders = exchange.getRequestHeaders();
         final Headers responseHeaders = exchange.getResponseHeaders();
         for(Map.Entry<String, List<String>> entry : requestHeaders.entrySet()) {
-            logger.debug("--> " + entry.getKey() + " = " + entry.getValue().toString());
+            logger.debug("H > " + entry.getKey() + " = " + entry.getValue().toString());
             final String headerValue = entry.getValue().toString();
             final String hv = headerValue.substring(1, headerValue.length() - 1);
             if(! hv.isEmpty() ) {
