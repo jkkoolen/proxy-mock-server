@@ -43,6 +43,15 @@
                         </program>
                     </programs>
                 </configuration>
+                <!--this part is needed to build the assembly package during package fase-->
+                <executions>
+                    <execution>
+                        <id>assemble</id>
+                        <goals>
+                            <goal>assemble</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
